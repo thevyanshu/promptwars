@@ -42,6 +42,12 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# Firebase
+.firebase/
+firebase-debug.log*
+.firebaserc # Optional: Keep if you want to share project aliases, but often ignored in sensitive projects
+.runtimeconfig.json
+
 # OS Generated
 .DS_Store
 .DS_Store?
@@ -50,4 +56,10 @@ terraform.rc
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
 
