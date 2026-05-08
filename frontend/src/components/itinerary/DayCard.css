@@ -1,0 +1,139 @@
+.day-card {
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.day-badge {
+  background: var(--brand-gradient);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.day-title-group h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.day-date {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.timeline-time {
+  width: 80px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.time-end {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.timeline-content {
+  flex: 1;
+  display: flex;
+  gap: 1.5rem;
+  position: relative;
+}
+
+.timeline-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--secondary);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--secondary);
+  margin-top: 4px;
+  z-index: 1;
+}
+
+/* Connecting line */
+.timeline-content::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: -1.5rem;
+  left: 5px;
+  width: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.timeline-item:last-child .timeline-content::before {
+  display: none;
+}
+
+.activity-details {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  flex: 1;
+  transition: transform var(--transition-fast);
+}
+
+.activity-details:hover {
+  transform: translateX(4px);
+  border-color: var(--primary);
+}
+
+.activity-details h3 {
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.activity-desc {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  background: var(--bg-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.booking-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}

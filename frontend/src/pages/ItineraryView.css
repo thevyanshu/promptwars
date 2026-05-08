@@ -1,0 +1,39 @@
+.itinerary-view-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.itinerary-header {
+  margin-bottom: 2rem;
+}
+
+.itinerary-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-summary {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--surface);
+  border-left: 4px solid var(--primary);
+}
+
+.itinerary-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .itinerary-layout {
+    grid-template-columns: 1fr 400px;
+  }
+  
+  .itinerary-map-sticky {
+    position: sticky;
+    top: 80px;
+  }
+}
