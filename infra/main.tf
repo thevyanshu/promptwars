@@ -80,20 +80,56 @@ resource "google_firestore_database" "database" {
 }
 
 # -----------------------------------------------------
-# Cloud Run Backend Service Placeholder
+# Cloud Run Backend Service
 # -----------------------------------------------------
 resource "google_cloud_run_v2_service" "backend" {
   name     = "travel-engine-backend"
   location = var.region
 
   template {
+    # Scaling configuration
+    scaling {
+      min_instance_count = 0    # Scale to zero when idle to save costs
+      max_instance_count = 10   # Cap at 10 instances for MVP budget control
+    }
+
+    # Allow up to 80 concurrent requests per instance
+    max_instance_request_concurrency = 80
+
+    # 5 minute timeout for SSE streaming endpoints
+    timeout = "300s"
+
     containers {
-      image = "us-docker.pkg.dev/cloudrun/container/hello" # Placeholder until first build
+      image = "us-docker.pkg.dev/cloudrun/container/hello" # Replaced by gcloud deploy --source
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+
       env {
         name  = "GOOGLE_MAPS_API_KEY"
         value = var.maps_api_key
       }
-      # Database connection string would be constructed and passed here
+
+      # Health check
+      startup_probe {
+        http_get {
+          path = "/healthz"
+        }
+        initial_delay_seconds = 5
+        period_seconds        = 10
+        failure_threshold     = 3
+      }
+
+      liveness_probe {
+        http_get {
+          path = "/healthz"
+        }
+        period_seconds = 30
+      }
     }
   }
 
