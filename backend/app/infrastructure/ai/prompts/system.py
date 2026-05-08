@@ -21,6 +21,8 @@ You must return a valid JSON object matching this schema:
           "time_end": "HH:MM",
           "activity_name": "Name",
           "location": "Location / Place Name",
+          "lat": 0.0,
+          "lng": 0.0,
           "description": "Brief engaging description",
           "estimated_cost": "Cost string (e.g. $10, Free)",
           "booking_type": "flight | hotel | activity | dining | none"

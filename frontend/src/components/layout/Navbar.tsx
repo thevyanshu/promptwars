@@ -18,7 +18,9 @@ const Navbar = () => {
         </nav>
         
         <div className="navbar-actions">
-          <button className="btn btn-secondary login-btn">
+          <button className="btn btn-secondary login-btn" onClick={() => {
+            alert('Signed in as Guest for local MVP. Firebase Auth will be wired up in production.');
+          }}>
             <User size={18} />
             <span>Sign In</span>
           </button>

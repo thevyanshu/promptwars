@@ -58,6 +58,32 @@ class PlannerAI:
             return json.loads(response.text)
         except Exception as e:
             return {"status": "error", "message": f"AI Generation Failed: {str(e)}"}
+
+    def stream_generate_plan(self, trip_details: dict):
+        """
+        Generates an itinerary using Gemini 2.5 Pro and yields chunks as Server-Sent Events (SSE).
+        """
+        if not self.model:
+            # Fallback mock for local development without GCP auth
+            yield f"data: {json.dumps(self._mock_generation(trip_details))}\n\n"
+            return
+            
+        prompt = f"Generate an itinerary for the following trip constraints:\n{json.dumps(trip_details, indent=2)}"
+        
+        try:
+            response_stream = self.model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"},
+                stream=True
+            )
+            for chunk in response_stream:
+                if chunk.text:
+                    # Replace newlines so SSE parser doesn't break
+                    safe_text = chunk.text.replace('\n', '\\n')
+                    yield f"data: {safe_text}\n\n"
+        except Exception as e:
+            error_data = json.dumps({"status": "error", "message": str(e)})
+            yield f"data: {error_data}\n\n"
             
     def _mock_generation(self, trip_details: dict) -> dict:
         """Mock response for local development when GCP credentials aren't available."""
@@ -73,6 +99,8 @@ class PlannerAI:
                             "time_end": "12:00",
                             "activity_name": "Arrive and Check-in",
                             "location": "Mock Hotel",
+                            "lat": 35.6762,
+                            "lng": 139.6503,
                             "description": "Settle in and freshen up.",
                             "estimated_cost": "$0",
                             "booking_type": "hotel"
@@ -82,6 +110,8 @@ class PlannerAI:
                             "time_end": "15:00",
                             "activity_name": "Lunch at local spot",
                             "location": "Downtown Restaurant",
+                            "lat": 35.6812,
+                            "lng": 139.6603,
                             "description": "Enjoy local cuisine respecting your dietary constraints.",
                             "estimated_cost": "$20",
                             "booking_type": "dining"

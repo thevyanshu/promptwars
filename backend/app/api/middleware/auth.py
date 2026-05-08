@@ -23,14 +23,27 @@ except ValueError:
 except Exception as e:
     print(f"Warning: Firebase Admin SDK initialization failed: {e}")
 
-security = HTTPBearer()
+from fastapi import Request
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+def verify_token(request: Request):
     """
     Verify the Firebase JWT token and return the decoded token.
     For local MVP development, we'll allow a dummy token if Firebase isn't strictly configured.
     """
-    token = credentials.credentials
+    auth_header = request.headers.get("Authorization")
+    token = None
+    
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split("Bearer ")[1]
+    elif request.query_params.get("token"):
+        token = request.query_params.get("token")
+        
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     # --- Local Dev / MVP Override ---
     if token == "local-dev-token":
@@ -47,7 +60,9 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security))
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-def get_current_user(decoded_token: dict = Security(verify_token)) -> str:
+from fastapi import Depends
+
+def get_current_user(decoded_token: dict = Depends(verify_token)) -> str:
     """
     Dependency to get the current user's UID.
     """

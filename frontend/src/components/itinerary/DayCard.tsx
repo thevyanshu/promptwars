@@ -15,7 +15,7 @@ interface Activity {
 }
 
 interface DayCardProps {
-  dayNumber: int;
+  dayNumber: number;
   date: string;
   theme: string;
   activities: Activity[];

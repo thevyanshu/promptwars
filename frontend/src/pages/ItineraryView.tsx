@@ -1,72 +1,170 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { jsonrepair } from 'jsonrepair';
 import DayCard from '../components/itinerary/DayCard';
+import ChatModifier from '../components/itinerary/ChatModifier';
 import MapComponent from '../components/maps/MapComponent';
 import './ItineraryView.css';
 
-// Mock data for MVP preview
-const mockItinerary = {
-  budget_summary: "Stayed within the $1500 moderate budget.",
-  ai_notes: "Weather looks clear. Be prepared for walking in the downtown area.",
-  itinerary: [
-    {
-      day: 1,
-      date: "2024-06-15",
-      theme: "Arrival & City Highlights",
-      activities: [
-        {
-          time_start: "10:00",
-          time_end: "11:30",
-          activity_name: "Check into Hotel",
-          location: "The Grand Stay, Downtown",
-          description: "Drop off bags and freshen up.",
-          estimated_cost: "$0",
-          booking_type: "hotel",
-          dummy_booking_ref: "REF-HTL-9012"
-        },
-        {
-          time_start: "12:00",
-          time_end: "13:30",
-          activity_name: "Lunch at Local Cafe",
-          location: "Central Square",
-          description: "Enjoy a light lunch and coffee to recover from the flight.",
-          estimated_cost: "$25",
-          booking_type: "dining"
-        }
-      ]
-    }
-  ]
-};
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const DUMMY_TOKEN = 'local-dev-token';
 
 const ItineraryView = () => {
+  const { id } = useParams<{ id: string }>();
+  const [streamData, setStreamData] = useState<any>(null);
+  const [isStreaming, setIsStreaming] = useState(true);
+  const [error, setError] = useState(false);
+  const lastVersionRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    let eventSource: EventSource | null = null;
+    let accumulatedJson = '';
+
+    const connectStream = () => {
+      // In a real app with strict headers, we'd use fetch to stream, but EventSource is simpler for MVP
+      // Appending token to URL since EventSource doesn't support custom headers natively
+      eventSource = new EventSource(`${BASE_URL}/planner/${id}/stream?token=${DUMMY_TOKEN}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const rawData = event.data.replace(/\\n/g, '\n');
+          
+          // If the backend sent a fully formed status chunk (e.g. error)
+          if (rawData.startsWith('{"status":')) {
+             const parsed = JSON.parse(rawData);
+             if (parsed.status === "error") {
+                 setError(true);
+                 setIsStreaming(false);
+                 eventSource?.close();
+                 return;
+             }
+          }
+
+          accumulatedJson += rawData;
+          
+          try {
+            // jsonrepair fixes incomplete JSON strings generated during streaming!
+            const repaired = jsonrepair(accumulatedJson);
+            setStreamData(JSON.parse(repaired));
+          } catch (repairError) {
+            // Ignore parse errors on extremely broken chunks, wait for next chunk
+          }
+
+        } catch (err) {
+          console.error("Stream parse error", err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        setIsStreaming(false);
+        eventSource?.close();
+      };
+    };
+
+    connectStream();
+
+    return () => {
+      eventSource?.close();
+    };
+  }, [id]);
+
+  useEffect(() => {
+    // If the data is fully loaded and version changes (real-time disruptions)
+    if (!isStreaming && streamData?.version) {
+      if (lastVersionRef.current !== null && streamData.version > lastVersionRef.current) {
+        toast.success("Itinerary updated by real-time disruption checker!");
+      }
+      lastVersionRef.current = streamData.version;
+    }
+  }, [streamData?.version, isStreaming]);
+
+  if (error) {
+    return (
+      <div className="itinerary-view-container">
+        <div className="glass-panel" style={{ padding: '2rem', borderColor: 'var(--accent)' }}>
+          <h2>Generation Failed</h2>
+          <p>Sorry, we couldn't generate your itinerary at this time.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If we haven't received ANY stream chunks yet
+  if (!streamData && isStreaming) {
+    return (
+      <div className="itinerary-view-container loading-state">
+        <div className="glass-panel text-center" style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+          <h2>Connecting to AI Engine...</h2>
+          <p className="text-muted">Establishing secure streaming connection.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine markers for the map
+  const markers = streamData?.itinerary?.flatMap((day: any) => 
+    (day.activities || [])
+      .filter((act: any) => act.location && act.lat && act.lng)
+      .map((act: any, idx: number) => ({
+        id: `${day.day}-${idx}`,
+        lat: act.lat,
+        lng: act.lng,
+        title: act.location
+      }))
+  ) || [];
+
   return (
     <div className="itinerary-view-container">
       <div className="itinerary-header">
-        <h1>Your <span className="text-gradient">Itinerary</span> is Ready</h1>
-        <div className="ai-summary glass-panel">
-          <p><strong>Budget Summary:</strong> {mockItinerary.budget_summary}</p>
-          <p><strong>AI Note:</strong> {mockItinerary.ai_notes}</p>
-        </div>
+        <h1>
+          Your <span className="text-gradient">Itinerary</span> 
+          {isStreaming && <Loader2 className="animate-spin" size={24} style={{ display: 'inline', marginLeft: '1rem', color: 'var(--primary)' }} />}
+        </h1>
+        
+        {streamData?.budget_summary && (
+          <div className="ai-summary glass-panel">
+            <p><strong>Budget Summary:</strong> {streamData.budget_summary}</p>
+            {streamData?.ai_notes && <p><strong>AI Note:</strong> {streamData.ai_notes}</p>}
+          </div>
+        )}
       </div>
 
       <div className="itinerary-layout">
         <div className="itinerary-timeline-scroll">
-          {mockItinerary.itinerary.map((day) => (
+          {streamData?.itinerary?.map((day: any) => (
             <DayCard 
-              key={day.day}
+              key={day.day || Math.random()}
               dayNumber={day.day}
-              date={day.date}
-              theme={day.theme}
-              activities={day.activities}
+              date={day.date || "TBD"}
+              theme={day.theme || "Planning..."}
+              activities={day.activities || []}
             />
           ))}
         </div>
         
         <div className="itinerary-map-sticky">
           <div className="glass-panel" style={{ height: 'calc(100vh - 120px)' }}>
-             <MapComponent />
+             <MapComponent markers={markers} />
           </div>
         </div>
       </div>
+
+      {/* Chat Modifier FAB — only show after streaming is done */}
+      {!isStreaming && streamData && id && (
+        <ChatModifier
+          tripId={id}
+          currentItinerary={streamData}
+          onItineraryUpdate={(newData) => {
+            setStreamData(newData);
+            toast.success('Itinerary updated!');
+          }}
+        />
+      )}
     </div>
   );
 };

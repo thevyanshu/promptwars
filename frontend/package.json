@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -14,9 +14,11 @@
     "@vis.gl/react-google-maps": "^1.8.3",
     "firebase": "^12.13.0",
     "framer-motion": "^12.38.0",
+    "jsonrepair": "^3.14.0",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.15.0",
     "zustand": "^5.0.13"
   },

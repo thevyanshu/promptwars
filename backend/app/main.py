@@ -16,11 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api.v1 import trips, places, planner
+from app.api.v1 import trips, places, planner, realtime
 
 app.include_router(trips.router, prefix=f"{settings.API_V1_STR}/trips", tags=["trips"])
 app.include_router(places.router, prefix=f"{settings.API_V1_STR}/places", tags=["places"])
 app.include_router(planner.router, prefix=f"{settings.API_V1_STR}/planner", tags=["planner"])
+app.include_router(realtime.router, prefix=f"{settings.API_V1_STR}/realtime", tags=["realtime"])
 
 @app.get("/healthz")
 def health_check():
