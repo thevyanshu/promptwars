@@ -3,16 +3,17 @@ import { useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { jsonrepair } from 'jsonrepair';
+import { useAuth } from '../contexts/AuthContext';
 import DayCard from '../components/itinerary/DayCard';
 import ChatModifier from '../components/itinerary/ChatModifier';
 import MapComponent from '../components/maps/MapComponent';
 import './ItineraryView.css';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-const DUMMY_TOKEN = 'local-dev-token';
 
 const ItineraryView = () => {
   const { id } = useParams<{ id: string }>();
+  const { getToken } = useAuth();
   const [streamData, setStreamData] = useState<any>(null);
   const [isStreaming, setIsStreaming] = useState(true);
   const [error, setError] = useState(false);
@@ -24,45 +25,48 @@ const ItineraryView = () => {
     let eventSource: EventSource | null = null;
     let accumulatedJson = '';
 
-    const connectStream = () => {
-      // In a real app with strict headers, we'd use fetch to stream, but EventSource is simpler for MVP
-      // Appending token to URL since EventSource doesn't support custom headers natively
-      eventSource = new EventSource(`${BASE_URL}/planner/${id}/stream?token=${DUMMY_TOKEN}`);
+    const connectStream = async () => {
+      try {
+        const token = await getToken();
+        // Appending token to URL since EventSource doesn't support custom headers natively
+        eventSource = new EventSource(`${BASE_URL}/planner/${id}/stream?token=${token}`);
 
-      eventSource.onmessage = (event) => {
-        try {
-          const rawData = event.data.replace(/\\n/g, '\n');
-          
-          // If the backend sent a fully formed status chunk (e.g. error)
-          if (rawData.startsWith('{"status":')) {
-             const parsed = JSON.parse(rawData);
-             if (parsed.status === "error") {
-                 setError(true);
-                 setIsStreaming(false);
-                 eventSource?.close();
-                 return;
-             }
-          }
-
-          accumulatedJson += rawData;
-          
+        eventSource.onmessage = (event) => {
           try {
-            // jsonrepair fixes incomplete JSON strings generated during streaming!
-            const repaired = jsonrepair(accumulatedJson);
-            setStreamData(JSON.parse(repaired));
-          } catch (repairError) {
-            // Ignore parse errors on extremely broken chunks, wait for next chunk
+            const rawData = event.data.replace(/\\n/g, '\n');
+            
+            if (rawData.startsWith('{"status":')) {
+               const parsed = JSON.parse(rawData);
+               if (parsed.status === "error") {
+                   setError(true);
+                   setIsStreaming(false);
+                   eventSource?.close();
+                   return;
+               }
+            }
+
+            accumulatedJson += rawData;
+            
+            try {
+              const repaired = jsonrepair(accumulatedJson);
+              setStreamData(JSON.parse(repaired));
+            } catch (repairError) {
+              // Wait for next chunk
+            }
+
+          } catch (err) {
+            console.error("Stream parse error", err);
           }
+        };
 
-        } catch (err) {
-          console.error("Stream parse error", err);
-        }
-      };
-
-      eventSource.onerror = (err) => {
-        setIsStreaming(false);
-        eventSource?.close();
-      };
+        eventSource.onerror = (err) => {
+          setIsStreaming(false);
+          eventSource?.close();
+        };
+      } catch (err) {
+        console.error("Failed to get auth token", err);
+        setError(true);
+      }
     };
 
     connectStream();
@@ -70,13 +74,12 @@ const ItineraryView = () => {
     return () => {
       eventSource?.close();
     };
-  }, [id]);
+  }, [id, getToken]);
 
   useEffect(() => {
-    // If the data is fully loaded and version changes (real-time disruptions)
     if (!isStreaming && streamData?.version) {
       if (lastVersionRef.current !== null && streamData.version > lastVersionRef.current) {
-        toast.success("Itinerary updated by real-time disruption checker!");
+        toast.success("Itinerary updated!");
       }
       lastVersionRef.current = streamData.version;
     }
@@ -86,27 +89,25 @@ const ItineraryView = () => {
     return (
       <div className="itinerary-view-container">
         <div className="glass-panel" style={{ padding: '2rem', borderColor: 'var(--accent)' }}>
-          <h2>Generation Failed</h2>
-          <p>Sorry, we couldn't generate your itinerary at this time.</p>
+          <h2>Connection Failed</h2>
+          <p>Please ensure you are signed in and try again.</p>
         </div>
       </div>
     );
   }
 
-  // If we haven't received ANY stream chunks yet
   if (!streamData && isStreaming) {
     return (
       <div className="itinerary-view-container loading-state">
         <div className="glass-panel text-center" style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <Loader2 className="animate-spin" size={48} color="var(--primary)" />
-          <h2>Connecting to AI Engine...</h2>
-          <p className="text-muted">Establishing secure streaming connection.</p>
+          <h2>Generating Your Adventure...</h2>
+          <p className="text-muted">Gemini is crafting a personalized itinerary.</p>
         </div>
       </div>
     );
   }
 
-  // Determine markers for the map
   const markers = streamData?.itinerary?.flatMap((day: any) => 
     (day.activities || [])
       .filter((act: any) => act.location && act.lat && act.lng)
@@ -154,14 +155,12 @@ const ItineraryView = () => {
         </div>
       </div>
 
-      {/* Chat Modifier FAB — only show after streaming is done */}
       {!isStreaming && streamData && id && (
         <ChatModifier
           tripId={id}
           currentItinerary={streamData}
           onItineraryUpdate={(newData) => {
             setStreamData(newData);
-            toast.success('Itinerary updated!');
           }}
         />
       )}

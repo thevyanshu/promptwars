@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, MessageCircle, X } from 'lucide-react';
+import { api } from '../../services/api';
 import './ChatModifier.css';
 
 interface ChatMessage {
@@ -13,9 +14,6 @@ interface ChatModifierProps {
   currentItinerary: any;
   onItineraryUpdate: (newData: any) => void;
 }
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-const DUMMY_TOKEN = 'local-dev-token';
 
 const ChatModifier: React.FC<ChatModifierProps> = ({ tripId, currentItinerary, onItineraryUpdate }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,21 +46,7 @@ const ChatModifier: React.FC<ChatModifierProps> = ({ tripId, currentItinerary, o
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${BASE_URL}/planner/${tripId}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DUMMY_TOKEN}`
-        },
-        body: JSON.stringify({
-          message: userMessage.content,
-          current_itinerary: currentItinerary
-        })
-      });
-
-      if (!res.ok) throw new Error('Chat request failed');
-
-      const data = await res.json();
+      const data = await api.chatModify(tripId, userMessage.content, currentItinerary);
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -95,7 +79,6 @@ const ChatModifier: React.FC<ChatModifierProps> = ({ tripId, currentItinerary, o
 
   return (
     <>
-      {/* Floating Action Button */}
       <button 
         className={`chat-fab ${isOpen ? 'chat-fab-active' : ''}`} 
         onClick={() => setIsOpen(!isOpen)}
@@ -104,7 +87,6 @@ const ChatModifier: React.FC<ChatModifierProps> = ({ tripId, currentItinerary, o
         {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
 
-      {/* Chat Panel */}
       {isOpen && (
         <div className="chat-panel glass-panel">
           <div className="chat-header">
