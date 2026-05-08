@@ -25,6 +25,16 @@ export async function getStreamToken(): Promise<string> {
 }
 
 export const api = {
+  async getTrips() {
+    const headers = await getHeaders();
+    const res = await fetch(`${BASE_URL}/trips/`, {
+      method: 'GET',
+      headers,
+    });
+    if (!res.ok) throw new Error('Failed to fetch trips');
+    return res.json();
+  },
+
   async createTrip(tripData: any) {
     const headers = await getHeaders();
     const res = await fetch(`${BASE_URL}/trips/`, {
